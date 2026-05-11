@@ -659,7 +659,7 @@ const ExcalidrawWrapper = () => {
     }
 
     // SSE: receive draw ops from Claude the instant they are issued
-    const source = new EventSource("http://localhost:3002/events");
+    const source = new EventSource("http://localhost:4243/events");
     source.onmessage = (e: MessageEvent) => {
       const op: { type: "add_elements"; elements: any[] } | { type: "clear" } =
         JSON.parse(e.data);
@@ -686,7 +686,7 @@ const ExcalidrawWrapper = () => {
         return;
       }
       lastCount = els.length;
-      fetch("http://localhost:3002/scene", {
+      fetch("http://localhost:4243/scene", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ elements: els }),

@@ -1,102 +1,37 @@
 /**
- * Excalidraw MCP server — stdio MCP protocol + embedded HTTP bridge on port 3002.
+ * Excalidraw MCP server — stdio only.
  *
- * Ops are pushed to SSE-connected browsers instantly; the queue catches ops that
- * arrive before the browser connects and flushes them on first SSE connection.
+ * Delegates all canvas ops to the always-running bridge on port 4243.
+ * Claude Code launches this process via stdio when a session starts.
  *
- * Start: node server.mjs   (Claude Code launches this automatically)
+ * Start: node server.mjs   (Claude Code handles this automatically)
+ * Bridge must already be running: node bridge.mjs (or via LaunchAgent)
  */
 
-import http from "node:http";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-const BRIDGE_PORT = 3002;
+const BRIDGE = "http://localhost:4243";
 
-// ─── embedded HTTP bridge ─────────────────────────────────────────────────────
+// ─── bridge helpers ───────────────────────────────────────────────────────────
 
-const queue = [];        // ops buffered while no SSE client is connected
-const sseClients = new Set();  // active browser SSE connections
-let scene = [];          // latest element snapshot from the browser
-
-function cors(res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+async function post(path, data) {
+  await fetch(`${BRIDGE}${path}`, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify(data),
+  }).catch(() => {}); // bridge not running — silently no-op
 }
 
-function jsonReply(res, status, data) {
-  cors(res);
-  res.writeHead(status, { "Content-Type": "application/json" });
-  res.end(JSON.stringify(data));
-}
-
-function readBody(req) {
-  return new Promise((resolve, reject) => {
-    let body = "";
-    req.on("data", (c) => (body += c));
-    req.on("end", () => { try { resolve(JSON.parse(body)); } catch (e) { reject(e); } });
-    req.on("error", reject);
-  });
-}
-
-// Deliver an op: push directly to connected SSE clients, or queue for later.
-function enqueue(op) {
-  if (sseClients.size > 0) {
-    const frame = `data: ${JSON.stringify(op)}\n\n`;
-    for (const client of sseClients) client.write(frame);
-  } else {
-    queue.push(op);
+async function getScene() {
+  try {
+    const r = await fetch(`${BRIDGE}/scene`);
+    return (await r.json()).elements ?? [];
+  } catch {
+    return [];
   }
 }
-
-const bridge = http.createServer(async (req, res) => {
-  if (req.method === "OPTIONS") { cors(res); res.writeHead(204); res.end(); return; }
-
-  // SSE stream — browser subscribes here for real-time ops
-  if (req.method === "GET" && req.url === "/events") {
-    cors(res);
-    res.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      "Connection": "keep-alive",
-    });
-    res.write(": connected\n\n");
-
-    // Flush any ops that arrived before the browser was open
-    const pending = queue.splice(0);
-    for (const op of pending) res.write(`data: ${JSON.stringify(op)}\n\n`);
-
-    sseClients.add(res);
-    req.on("close", () => sseClients.delete(res));
-    return;
-  }
-
-  if (req.method === "GET"  && req.url === "/scene")  return jsonReply(res, 200, { elements: scene });
-  if (req.method === "GET"  && req.url === "/health") return jsonReply(res, 200, { ok: true, sseClients: sseClients.size, queued: queue.length });
-
-  if (req.method === "POST" && req.url === "/elements") {
-    const body = await readBody(req);
-    enqueue({ type: "add_elements", elements: body.elements });
-    return jsonReply(res, 200, { ok: true });
-  }
-  if (req.method === "POST" && req.url === "/clear") {
-    enqueue({ type: "clear" });
-    return jsonReply(res, 200, { ok: true });
-  }
-  if (req.method === "POST" && req.url === "/scene") {
-    const body = await readBody(req);
-    scene = body.elements ?? [];
-    return jsonReply(res, 200, { ok: true });
-  }
-
-  cors(res); res.writeHead(404); res.end("not found");
-});
-
-bridge.listen(BRIDGE_PORT, () => {
-  console.error(`[excalidraw-mcp] bridge listening on http://localhost:${BRIDGE_PORT}`);
-});
 
 // ─── element factories ────────────────────────────────────────────────────────
 
@@ -144,9 +79,9 @@ const mkArrow = ({ x1, y1, x2, y2, strokeColor = "#1e1e1e", endArrowhead = "arro
 
 // ─── MCP tools ────────────────────────────────────────────────────────────────
 
-const mcp = new McpServer({ name: "excalidraw", version: "0.1.0" });
+const mcp = new McpServer({ name: "excalidraw", version: "0.2.0" });
 
-const push = (elements) => enqueue({ type: "add_elements", elements });
+const push = (elements) => post("/elements", { elements });
 const ok   = (msg) => ({ content: [{ type: "text", text: msg }] });
 
 mcp.tool("draw_rectangle", "Draw a rectangle on the Excalidraw canvas", {
@@ -155,45 +90,45 @@ mcp.tool("draw_rectangle", "Draw a rectangle on the Excalidraw canvas", {
   strokeColor: z.string().optional().default("#1e1e1e"),
   backgroundColor: z.string().optional().default("transparent"),
   fillStyle: z.enum(["solid", "hachure", "cross-hatch", "zigzag"]).optional().default("solid"),
-}, async (args) => { push([mkRect(args)]); return ok(`rectangle (${args.x},${args.y}) ${args.width}×${args.height}`); });
+}, async (args) => { await push([mkRect(args)]); return ok(`rectangle (${args.x},${args.y}) ${args.width}×${args.height}`); });
 
 mcp.tool("draw_ellipse", "Draw an ellipse or circle on the canvas", {
   x: z.number(), y: z.number(),
   width: z.number().positive(), height: z.number().positive(),
   strokeColor: z.string().optional().default("#1e1e1e"),
   backgroundColor: z.string().optional().default("transparent"),
-}, async (args) => { push([mkEllipse(args)]); return ok(`ellipse (${args.x},${args.y}) ${args.width}×${args.height}`); });
+}, async (args) => { await push([mkEllipse(args)]); return ok(`ellipse (${args.x},${args.y}) ${args.width}×${args.height}`); });
 
 mcp.tool("draw_text", "Add a text label on the canvas", {
   text: z.string(),
   x: z.number(), y: z.number(),
   fontSize: z.number().positive().optional().default(20),
   color: z.string().optional().default("#1e1e1e"),
-}, async (args) => { push([mkText(args)]); return ok(`text "${args.text}" at (${args.x},${args.y})`); });
+}, async (args) => { await push([mkText(args)]); return ok(`text "${args.text}" at (${args.x},${args.y})`); });
 
 mcp.tool("draw_arrow", "Draw an arrow between two points", {
   x1: z.number(), y1: z.number(), x2: z.number(), y2: z.number(),
   strokeColor: z.string().optional().default("#1e1e1e"),
-}, async (args) => { push([mkArrow(args)]); return ok(`arrow (${args.x1},${args.y1})→(${args.x2},${args.y2})`); });
+}, async (args) => { await push([mkArrow(args)]); return ok(`arrow (${args.x1},${args.y1})→(${args.x2},${args.y2})`); });
 
 mcp.tool("draw_line", "Draw a straight line between two points (no arrowhead)", {
   x1: z.number(), y1: z.number(), x2: z.number(), y2: z.number(),
   strokeColor: z.string().optional().default("#1e1e1e"),
-}, async (args) => { push([mkArrow({ ...args, endArrowhead: null })]); return ok(`line (${args.x1},${args.y1})→(${args.x2},${args.y2})`); });
+}, async (args) => { await push([mkArrow({ ...args, endArrowhead: null })]); return ok(`line (${args.x1},${args.y1})→(${args.x2},${args.y2})`); });
 
 mcp.tool("draw_elements", "Add raw Excalidraw element objects (batched / advanced)", {
   elements: z.array(z.record(z.unknown())),
 }, async ({ elements }) => {
   const stamped = elements.map((el) => ({ ...base(), ...el }));
-  push(stamped);
+  await push(stamped);
   return ok(`added ${stamped.length} element(s)`);
 });
 
 mcp.tool("clear_canvas", "Remove all elements from the canvas", {},
-  async () => { enqueue({ type: "clear" }); return ok("canvas cleared"); });
+  async () => { await post("/clear", {}); return ok("canvas cleared"); });
 
 mcp.tool("get_scene", "Return the elements currently on the canvas as JSON", {},
-  async () => ({ content: [{ type: "text", text: JSON.stringify(scene, null, 2) }] }));
+  async () => ({ content: [{ type: "text", text: JSON.stringify(await getScene(), null, 2) }] }));
 
 const transport = new StdioServerTransport();
 await mcp.connect(transport);

@@ -1,16 +1,20 @@
 /**
- * HTTP bridge between the MCP server and the Excalidraw browser app.
+ * Excalidraw HTTP bridge — standalone always-on service on port 4243.
  *
- * MCP server  →  POST /elements or POST /clear  →  bridge queue
- * Browser app →  GET  /poll                     →  drains queue + applies ops
- * Browser app →  POST /scene                    →  stores current element snapshot
- * MCP server  →  GET  /scene                    →  reads snapshot
+ * The browser connects via SSE (/events) to receive draw ops in real time.
+ * The MCP stdio server (server.mjs) POSTs ops here.
+ *
+ * Start: node bridge.mjs
+ * LaunchAgent: com.d.excalidraw-bridge
  */
 
 import http from "node:http";
 
-const queue = [];   // pending operations for the browser to apply
-let scene = [];     // latest snapshot from the browser
+const PORT = 4243;
+
+const queue      = [];
+const sseClients = new Set();
+let   scene      = [];
 
 function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -18,7 +22,7 @@ function cors(res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
-function json(res, status, data) {
+function jsonReply(res, status, data) {
   cors(res);
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(data));
@@ -27,63 +31,59 @@ function json(res, status, data) {
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let body = "";
-    req.on("data", (chunk) => (body += chunk));
-    req.on("end", () => {
-      try { resolve(JSON.parse(body)); } catch (e) { reject(e); }
-    });
+    req.on("data", (c) => (body += c));
+    req.on("end", () => { try { resolve(JSON.parse(body)); } catch (e) { reject(e); } });
     req.on("error", reject);
   });
 }
 
+function enqueue(op) {
+  if (sseClients.size > 0) {
+    const frame = `data: ${JSON.stringify(op)}\n\n`;
+    for (const client of sseClients) client.write(frame);
+  } else {
+    queue.push(op);
+  }
+}
+
 const server = http.createServer(async (req, res) => {
-  if (req.method === "OPTIONS") {
+  if (req.method === "OPTIONS") { cors(res); res.writeHead(204); res.end(); return; }
+
+  if (req.method === "GET" && req.url === "/events") {
     cors(res);
-    res.writeHead(204);
-    res.end();
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection":    "keep-alive",
+    });
+    res.write(": connected\n\n");
+    for (const op of queue.splice(0)) res.write(`data: ${JSON.stringify(op)}\n\n`);
+    sseClients.add(res);
+    req.on("close", () => sseClients.delete(res));
     return;
   }
 
-  // Browser drains the queue
-  if (req.method === "GET" && req.url === "/poll") {
-    const ops = queue.splice(0);
-    return json(res, 200, ops);
-  }
+  if (req.method === "GET"  && req.url === "/scene")  return jsonReply(res, 200, { elements: scene });
+  if (req.method === "GET"  && req.url === "/health") return jsonReply(res, 200, { ok: true, sseClients: sseClients.size, queued: queue.length });
 
-  // MCP pushes new elements
   if (req.method === "POST" && req.url === "/elements") {
     const body = await readBody(req);
-    queue.push({ type: "add_elements", elements: body.elements });
-    return json(res, 200, { ok: true, queued: body.elements.length });
+    enqueue({ type: "add_elements", elements: body.elements });
+    return jsonReply(res, 200, { ok: true });
   }
-
-  // MCP clears the canvas
   if (req.method === "POST" && req.url === "/clear") {
-    queue.push({ type: "clear" });
-    return json(res, 200, { ok: true });
+    enqueue({ type: "clear" });
+    return jsonReply(res, 200, { ok: true });
   }
-
-  // Browser reports current scene state
   if (req.method === "POST" && req.url === "/scene") {
     const body = await readBody(req);
     scene = body.elements ?? [];
-    return json(res, 200, { ok: true });
+    return jsonReply(res, 200, { ok: true });
   }
 
-  // MCP reads current scene state
-  if (req.method === "GET" && req.url === "/scene") {
-    return json(res, 200, { elements: scene });
-  }
-
-  if (req.method === "GET" && req.url === "/health") {
-    return json(res, 200, { ok: true, queued: queue.length });
-  }
-
-  cors(res);
-  res.writeHead(404);
-  res.end("Not found");
+  cors(res); res.writeHead(404); res.end("not found");
 });
 
-const PORT = 3002;
 server.listen(PORT, () => {
-  console.error(`Excalidraw bridge running on http://localhost:${PORT}`);
+  console.log(`[excalidraw-bridge] listening on http://localhost:${PORT}`);
 });
