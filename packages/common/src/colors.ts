@@ -137,28 +137,27 @@ export const COLORS_PER_ROW = 5;
 
 export const DEFAULT_CHART_COLOR_INDEX = 4;
 
-export const DEFAULT_ELEMENT_STROKE_COLOR_INDEX = 4;
-export const DEFAULT_ELEMENT_BACKGROUND_COLOR_INDEX = 1;
+export const DEFAULT_ELEMENT_STROKE_COLOR_INDEX = 2;
+export const DEFAULT_ELEMENT_BACKGROUND_COLOR_INDEX = 0;
 
 export const COLOR_PALETTE = {
   transparent: "transparent",
   black: "#1e1e1e",
   white: "#ffffff",
-  // open-color from https://github.com/yeun/open-color/blob/master/open-color.js
-  // corresponds to indexes [0,2,4,6,8] (weights: 50, 200, 400, 600, 800)
-  gray: ["#f8f9fa", "#e9ecef", "#ced4da", "#868e96", "#343a40"],
-  red: ["#fff5f5", "#ffc9c9", "#ff8787", "#fa5252", "#e03131"],
-  pink: ["#fff0f6", "#fcc2d7", "#f783ac", "#e64980", "#c2255c"],
-  grape: ["#f8f0fc", "#eebefa", "#da77f2", "#be4bdb", "#9c36b5"],
-  violet: ["#f3f0ff", "#d0bfff", "#9775fa", "#7950f2", "#6741d9"],
-  blue: ["#e7f5ff", "#a5d8ff", "#4dabf7", "#228be6", "#1971c2"],
-  cyan: ["#e3fafc", "#99e9f2", "#3bc9db", "#15aabf", "#0c8599"],
-  teal: ["#e6fcf5", "#96f2d7", "#38d9a9", "#12b886", "#099268"],
-  green: ["#ebfbee", "#b2f2bb", "#69db7c", "#40c057", "#2f9e44"],
-  yellow: ["#fff9db", "#ffec99", "#ffd43b", "#fab005", "#f08c00"],
-  orange: ["#fff4e6", "#ffd8a8", "#ffa94d", "#fd7e14", "#e8590c"],
-  // radix bronze shades [3,5,7,9,11]
-  bronze: ["#f8f1ee", "#eaddd7", "#d2bab0", "#a18072", "#846358"],
+  // Fluorescent / neon palette — all shades are fully saturated.
+  // Index 0 = lightest vivid tint, index 4 = deepest vivid shade.
+  gray:   ["#f8f9fa", "#ced4da", "#868e96", "#495057", "#212529"],
+  red:    ["#ffe0e3", "#ff8fa3", "#ff2244", "#e5001c", "#aa0015"],
+  pink:   ["#ffe0f5", "#ff80d5", "#ff00bb", "#cc0094", "#880063"],
+  grape:  ["#f0e0ff", "#cc80ff", "#bb00ff", "#9400cc", "#650088"],
+  violet: ["#e8e0ff", "#9980ff", "#6600ff", "#5200cc", "#380088"],
+  blue:   ["#ddeeff", "#77aaff", "#0055ff", "#0040dd", "#002699"],
+  cyan:   ["#e0faff", "#55ddff", "#00bbff", "#0099dd", "#006699"],
+  teal:   ["#e0fff8", "#55ffcc", "#00ffaa", "#00cc88", "#008855"],
+  green:  ["#eaffd6", "#88ff44", "#44ee00", "#33bb00", "#228800"],
+  yellow: ["#ffffcc", "#ffff44", "#ffee00", "#ddcc00", "#999900"],
+  orange: ["#fff0d6", "#ffaa44", "#ff7700", "#dd5500", "#993300"],
+  bronze: ["#ffe8d6", "#ffbb77", "#ff8800", "#dd6600", "#883300"],
 } as const;
 
 export type ColorPalette = typeof COLOR_PALETTE;
@@ -183,19 +182,19 @@ const COMMON_ELEMENT_SHADES = pick(COLOR_PALETTE, [
 // ORDER matters for positioning in quick picker
 export const DEFAULT_ELEMENT_STROKE_PICKS = [
   COLOR_PALETTE.black,
-  COLOR_PALETTE.red[DEFAULT_ELEMENT_STROKE_COLOR_INDEX],
-  COLOR_PALETTE.green[DEFAULT_ELEMENT_STROKE_COLOR_INDEX],
-  COLOR_PALETTE.blue[DEFAULT_ELEMENT_STROKE_COLOR_INDEX],
-  COLOR_PALETTE.yellow[DEFAULT_ELEMENT_STROKE_COLOR_INDEX],
+  COLOR_PALETTE.red[2],
+  COLOR_PALETTE.green[2],
+  COLOR_PALETTE.blue[2],
+  COLOR_PALETTE.yellow[2],
 ] as ColorTuple;
 
 // ORDER matters for positioning in quick picker
 export const DEFAULT_ELEMENT_BACKGROUND_PICKS = [
   COLOR_PALETTE.transparent,
-  COLOR_PALETTE.red[DEFAULT_ELEMENT_BACKGROUND_COLOR_INDEX],
-  COLOR_PALETTE.green[DEFAULT_ELEMENT_BACKGROUND_COLOR_INDEX],
-  COLOR_PALETTE.blue[DEFAULT_ELEMENT_BACKGROUND_COLOR_INDEX],
-  COLOR_PALETTE.yellow[DEFAULT_ELEMENT_BACKGROUND_COLOR_INDEX],
+  COLOR_PALETTE.red[0],
+  COLOR_PALETTE.green[0],
+  COLOR_PALETTE.blue[0],
+  COLOR_PALETTE.yellow[0],
 ] as ColorTuple;
 
 // ORDER matters for positioning in quick picker
