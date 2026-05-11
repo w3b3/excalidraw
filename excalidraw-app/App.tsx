@@ -659,7 +659,8 @@ const ExcalidrawWrapper = () => {
     }
 
     // SSE: receive draw ops from Claude the instant they are issued
-    const source = new EventSource("http://localhost:4243/events");
+    // Use origin-relative URL so the same build works locally and via SSH tunnel
+    const source = new EventSource(`${window.location.origin}/events`);
     source.onmessage = (e: MessageEvent) => {
       const op: { type: "add_elements" | "init_scene"; elements: any[] } | { type: "clear" } =
         JSON.parse(e.data);
@@ -691,7 +692,7 @@ const ExcalidrawWrapper = () => {
         return;
       }
       lastCount = els.length;
-      fetch("http://localhost:4243/scene", {
+      fetch(`${window.location.origin}/scene`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ elements: els }),
