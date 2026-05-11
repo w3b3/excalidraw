@@ -57,6 +57,8 @@ const server = http.createServer(async (req, res) => {
       "Connection":    "keep-alive",
     });
     res.write(": connected\n\n");
+    // Seed new tabs with the authoritative scene before flushing pending ops
+    if (scene.length > 0) res.write(`data: ${JSON.stringify({ type: "init_scene", elements: scene })}\n\n`);
     for (const op of queue.splice(0)) res.write(`data: ${JSON.stringify(op)}\n\n`);
     sseClients.add(res);
     req.on("close", () => sseClients.delete(res));

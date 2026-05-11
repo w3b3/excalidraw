@@ -661,7 +661,7 @@ const ExcalidrawWrapper = () => {
     // SSE: receive draw ops from Claude the instant they are issued
     const source = new EventSource("http://localhost:4243/events");
     source.onmessage = (e: MessageEvent) => {
-      const op: { type: "add_elements"; elements: any[] } | { type: "clear" } =
+      const op: { type: "add_elements" | "init_scene"; elements: any[] } | { type: "clear" } =
         JSON.parse(e.data);
       if (op.type === "clear") {
         excalidrawAPI.updateScene({
@@ -673,6 +673,11 @@ const ExcalidrawWrapper = () => {
         excalidrawAPI.updateScene({
           elements: [...existing, ...op.elements],
           captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+        });
+      } else if (op.type === "init_scene") {
+        excalidrawAPI.updateScene({
+          elements: op.elements,
+          captureUpdate: CaptureUpdateAction.NEVER,
         });
       }
     };
