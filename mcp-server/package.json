@@ -1,0 +1,13 @@
+{
+  "name": "excalidraw-mcp",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bridge": "node bridge.mjs",
+    "server": "node server.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.25.0"
+  }
+}

@@ -650,6 +650,55 @@ const ExcalidrawWrapper = () => {
     };
   }, [isCollabDisabled, collabAPI, excalidrawAPI, setLangCode, loadImages]);
 
+  // Subscribe to the MCP bridge via SSE for real-time draw ops from Claude.
+  // Scene state is reported back only when the element count actually changes.
+  // Silently no-ops when the bridge isn't running.
+  useEffect(() => {
+    if (!excalidrawAPI) {
+      return;
+    }
+
+    // SSE: receive draw ops from Claude the instant they are issued
+    const source = new EventSource("http://localhost:3002/events");
+    source.onmessage = (e: MessageEvent) => {
+      const op: { type: "add_elements"; elements: any[] } | { type: "clear" } =
+        JSON.parse(e.data);
+      if (op.type === "clear") {
+        excalidrawAPI.updateScene({
+          elements: [],
+          captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+        });
+      } else if (op.type === "add_elements") {
+        const existing = excalidrawAPI.getSceneElements();
+        excalidrawAPI.updateScene({
+          elements: [...existing, ...op.elements],
+          captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+        });
+      }
+    };
+    source.onerror = () => {}; // bridge not running — ignored
+
+    // Scene sync: report current elements every 2s, only when count changed
+    let lastCount = -1;
+    const syncId = setInterval(() => {
+      const els = excalidrawAPI.getSceneElements();
+      if (els.length === lastCount) {
+        return;
+      }
+      lastCount = els.length;
+      fetch("http://localhost:3002/scene", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ elements: els }),
+      }).catch(() => {});
+    }, 2000);
+
+    return () => {
+      source.close();
+      clearInterval(syncId);
+    };
+  }, [excalidrawAPI]);
+
   useEffect(() => {
     const unloadHandler = (event: BeforeUnloadEvent) => {
       LocalData.flushSave();
