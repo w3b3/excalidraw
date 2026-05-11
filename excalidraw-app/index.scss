@@ -1,10 +1,95 @@
 @import "../packages/excalidraw/css/variables.module.scss";
 
+// ─── w-b.dev design system theme ─────────────────────────────────────────────
+// Applied on top of Excalidraw's dark theme. All tokens sourced from
+// https://github.com/w3b3/design-system-w-b
+// --bg:        #0e0e0e   primary background
+// --bg2:       #141414   surface / islands
+// --fg:        #f3f1ec   warm paper-tone text
+// --accent:    #d4a853   warm gold (replaces purple primary)
+// --hair:      rgba(243,241,236,0.08)  subtle borders
+// --dimmer:    rgba(243,241,236,0.15)  secondary borders
+
 .excalidraw {
   --color-primary-contrast-offset: #625ee0; // to offset Chubb illusion
 
   &.theme--dark {
-    --color-primary-contrast-offset: #726dff; // to offset Chubb illusion
+    --color-primary-contrast-offset: #c49840; // to offset Chubb illusion
+
+    // ── Canvas & backgrounds ──────────────────────────────────────────────
+    --default-bg-color: #0e0e0e;
+    --input-bg-color: #0e0e0e;
+    --input-hover-bg-color: #141414;
+    --island-bg-color: #141414;
+    --island-bg-color-alt: #111111;
+    --popup-secondary-bg-color: #111111;
+    --popup-text-color: #f3f1ec;
+    --popup-text-inverted-color: #0e0e0e;
+    --overlay-bg-color: rgba(14, 14, 14, 0.72);
+
+    // ── Surface scale ─────────────────────────────────────────────────────
+    --color-surface-lowest: #0e0e0e;
+    --color-surface-low:    #111111;
+    --color-surface-mid:    #141414;
+    --color-surface-high:   #1c1c1c;
+    --color-on-surface:     #f3f1ec;
+
+    // ── Borders ───────────────────────────────────────────────────────────
+    --input-border-color:           rgba(243, 241, 236, 0.08);
+    --default-border-color:         rgba(243, 241, 236, 0.08);
+    --dialog-border-color:          rgba(243, 241, 236, 0.08);
+    --sidebar-border-color:         rgba(243, 241, 236, 0.08);
+    --color-border-outline:         rgba(243, 241, 236, 0.35);
+    --color-border-outline-variant: rgba(243, 241, 236, 0.15);
+    --avatar-border-color:          rgba(243, 241, 236, 0.08);
+
+    // ── Gold accent (replaces purple primary) ─────────────────────────────
+    --color-primary:                  #d4a853;
+    --color-primary-darker:           #c49840;
+    --color-primary-darkest:          #b88a30;
+    --color-primary-light:            rgba(212, 168, 83, 0.18);
+    --color-primary-light-darker:     rgba(212, 168, 83, 0.28);
+    --color-primary-hover:            #e0b86a;
+    --color-brand-hover:              #e0b86a;
+    --color-brand-active:             #b88a30;
+    --color-on-primary-container:     #0e0e0e;
+    --color-surface-primary-container: rgba(212, 168, 83, 0.18);
+    --color-selection:                rgba(212, 168, 83, 0.35);
+    --focus-highlight-color:          #d4a853;
+    --select-highlight-color:         #d4a853;
+    --link-color:                     #d4a853;
+    --link-color-hover:               #e0b86a;
+    --link-color-active:              #b88a30;
+    --color-logo-text:                #f3f1ec;
+
+    // ── Buttons ───────────────────────────────────────────────────────────
+    --button-gray-1: #1c1c1c;
+    --button-gray-2: #161616;
+    --button-gray-3: #121212;
+    --button-hover-bg:   #1c1c1c;
+    --button-active-bg:  #1c1c1c;
+    --button-active-border: #d4a853;
+
+    // ── Shape ─────────────────────────────────────────────────────────────
+    --border-radius-md: 4px;
+    --border-radius-lg: 4px;
+
+    // ── Shadows ───────────────────────────────────────────────────────────
+    --shadow-island: 0 0 0 1px rgba(243, 241, 236, 0.08);
+    --shadow-island-stronger: 0 0 0 1px rgba(212, 168, 83, 0.25);
+    --modal-shadow: 0 0 0 1px rgba(243, 241, 236, 0.08), 0 24px 48px rgba(0, 0, 0, 0.6);
+    --sidebar-shadow: 0 0 0 1px rgba(243, 241, 236, 0.08);
+
+    // ── Slider ────────────────────────────────────────────────────────────
+    --color-slider-track: rgba(212, 168, 83, 0.25);
+    --color-slider-thumb: #d4a853;
+
+    // ── Scrollbar ─────────────────────────────────────────────────────────
+    --scrollbar-thumb: #1c1c1c;
+    --scrollbar-thumb-hover: #242424;
+
+    // ── Typography ────────────────────────────────────────────────────────
+    --ui-font: "JetBrains Mono", ui-monospace, "Cascadia Code", "Source Code Pro", monospace;
   }
 
   .footer-center {

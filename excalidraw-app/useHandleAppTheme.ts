@@ -9,16 +9,25 @@ import { STORAGE_KEYS } from "./app_constants";
 const getDarkThemeMediaQuery = (): MediaQueryList | undefined =>
   window.matchMedia?.("(prefers-color-scheme: dark)");
 
+// One-time migration: clear any previously stored default so dark becomes the
+// new baseline. Users who explicitly toggle light after this will still be
+// remembered normally.
+const THEME_MIGRATION_KEY = "wb_theme_v1";
+if (!localStorage.getItem(THEME_MIGRATION_KEY)) {
+  localStorage.setItem(THEME_MIGRATION_KEY, "1");
+  localStorage.removeItem(STORAGE_KEYS.LOCAL_STORAGE_THEME);
+}
+
 export const useHandleAppTheme = () => {
   const [appTheme, setAppTheme] = useState<Theme | "system">(() => {
     return (
       (localStorage.getItem(STORAGE_KEYS.LOCAL_STORAGE_THEME) as
         | Theme
         | "system"
-        | null) || THEME.LIGHT
+        | null) || THEME.DARK
     );
   });
-  const [editorTheme, setEditorTheme] = useState<Theme>(THEME.LIGHT);
+  const [editorTheme, setEditorTheme] = useState<Theme>(THEME.DARK);
 
   useEffect(() => {
     const mediaQuery = getDarkThemeMediaQuery();
