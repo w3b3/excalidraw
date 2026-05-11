@@ -80,6 +80,78 @@ The app hosted at [excalidraw.com](https://excalidraw.com) is a minimal showcase
 
 We'll be adding these features as drop-in plugins for the npm package in the future.
 
+## w3b3 fork — personal always-on whiteboard
+
+This fork adds a local-first, always-on whiteboard setup with Claude Code MCP integration and a custom design system.
+
+### What's different
+
+| Area | Change |
+|------|--------|
+| **Theme** | w-b.dev design system — `#0e0e0e` bg, `#d4a853` gold accent, JetBrains Mono, 4px radius, hairline borders |
+| **Palette** | Fluorescent/neon colors; default stroke = index 2 (pure neon), background = index 0 (light tint) |
+| **MCP server** | `mcp-server/` — Claude Code draws on the canvas via tool calls |
+| **Always-on services** | Two macOS LaunchAgents serve the app and bridge permanently |
+
+### Services
+
+| Service | Port | LaunchAgent | Log |
+|---------|------|-------------|-----|
+| Whiteboard app (static build) | **4242** | `com.d.excalidraw-app` | `/tmp/excalidraw-app.log` |
+| MCP HTTP bridge (SSE relay) | **4243** | `com.d.excalidraw-bridge` | `/tmp/excalidraw-bridge.log` |
+
+Open at **http://localhost:4242** (set as Chrome homepage).
+
+### MCP tools
+
+Available globally in every Claude Code session:
+
+```
+draw_rectangle  draw_ellipse  draw_text  draw_arrow
+draw_line       draw_elements clear_canvas  get_scene
+```
+
+### After any code change — rebuild
+
+```bash
+cd ~/Development/excalidraw
+NODE_EXTRA_CA_CERTS=/tmp/chain.pem yarn build:app
+```
+
+### Restart services
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.d.excalidraw-bridge.plist
+launchctl unload ~/Library/LaunchAgents/com.d.excalidraw-app.plist
+launchctl load  ~/Library/LaunchAgents/com.d.excalidraw-bridge.plist
+launchctl load  ~/Library/LaunchAgents/com.d.excalidraw-app.plist
+```
+
+After restarting the bridge, refresh the open tab once — this repopulates the bridge's in-memory scene. New tabs then receive the full scene automatically on SSE connect.
+
+### Drawing colors (dark mode pre-inversion)
+
+Excalidraw dark mode applies `filter: invert(93%) hue-rotate(180deg)` to the entire canvas element. To see a target color on screen, draw its pre-inverted counterpart — `draw(applyFilter(targetColor))`.
+
+| Target (visible on screen) | Pass to MCP tool |
+|---------------------------|-----------------|
+| white / light text | `#121212` |
+| gold `#d4a853` | `#7d570e` |
+| red `#ff2244` | `#ff7b98` |
+| pink `#ff00bb` | `#ff79ff` |
+| grape `#bb00ff` | `#ff89ff` |
+| violet `#6600ff` | `#ffa8ff` |
+| blue `#0055ff` | `#65aeff` |
+| cyan `#00bbff` | `#0088c2` |
+| teal `#00ffaa` | `#007a31` |
+| green `#44ee00` | `#007c00` |
+| yellow `#ffee00` | `#463800` |
+| orange `#ff7700` | `#d96400` |
+
+Compute any color: `node -e "/* applyFilter snippet */"` — see `mcp-server/bridge.mjs` header for the full Node.js function.
+
+---
+
 ## Quick start
 
 **Note:** following instructions are for installing the Excalidraw [npm package](https://www.npmjs.com/package/@excalidraw/excalidraw) when integrating Excalidraw into your own app. To run the repository locally for development, please refer to our [Development Guide](https://docs.excalidraw.com/docs/introduction/development).
