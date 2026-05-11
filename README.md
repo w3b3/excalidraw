@@ -95,14 +95,47 @@ This fork adds a local-first, always-on whiteboard setup with Claude Code MCP in
 | **MCP server** | `mcp-server/` — Claude Code draws on the canvas via tool calls |
 | **Always-on services** | Two macOS LaunchAgents serve the app and bridge permanently |
 
-### Services
+### Instances
+
+#### macOS (always-on, Chrome homepage)
 
 | Service | Port | LaunchAgent | Log |
 |---------|------|-------------|-----|
 | Whiteboard app (static build) | **4242** | `com.d.excalidraw-app` | `/tmp/excalidraw-app.log` |
 | MCP HTTP bridge (SSE relay) | **4243** | `com.d.excalidraw-bridge` | `/tmp/excalidraw-bridge.log` |
 
-Open at **http://localhost:4242** (set as Chrome homepage).
+Open at **http://localhost:4242**.
+
+#### rv415 (LAN server, always-on)
+
+| Service | Port | systemd unit | Log |
+|---------|------|--------------|-----|
+| Whiteboard app | **4242** | `excalidraw-app.service` | `journalctl --user -u excalidraw-app` |
+| MCP HTTP bridge | **4243** | `excalidraw-bridge.service` | `journalctl --user -u excalidraw-bridge` |
+
+Open at **http://192.168.86.34:4242** from anywhere on the LAN.
+
+Services are managed as systemd user units with linger enabled (`loginctl enable-linger ds`) so they survive reboots and SSH disconnects.
+
+**Deploy a new build to rv415:**
+```bash
+cd ~/Development/excalidraw
+NODE_EXTRA_CA_CERTS=/tmp/chain.pem yarn build:app
+rsync -az --delete excalidraw-app/build/ rv415:~/excalidraw/excalidraw-app/build/
+ssh rv415 "systemctl --user restart excalidraw-app"
+```
+
+**Restart rv415 services:**
+```bash
+ssh rv415 "systemctl --user restart excalidraw-bridge excalidraw-app"
+```
+
+**Draw on rv415 canvas directly** (bypasses local MCP — posts to rv415 bridge):
+```bash
+curl -X POST http://192.168.86.34:4243/elements \
+  -H "Content-Type: application/json" \
+  -d '{"elements": [...]}'
+```
 
 ### MCP tools
 
